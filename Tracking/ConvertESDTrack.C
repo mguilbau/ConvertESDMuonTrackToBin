@@ -51,7 +51,8 @@ struct TrackParamStruct {
   double py;  
   double pz;
   double invpyz;  
-  short sign; 
+  short sign;
+  TMatrixD covM = TMatrixD(5, 5); 
 };
 
 
@@ -185,6 +186,11 @@ void ConvertESDTrack(TString esdFileName, TString outFileName = "AliESDs.in", Bo
       sTrackParam.pz = param->Pz();
       sTrackParam.invpyz = param->GetInverseBendingMomentum();
       sTrackParam.sign = param->GetCharge();
+      sTrackParam.covM = TMatrixD(5, 5);
+      //sTrackParam.covM = TMatrixD(5, 5, param->GetCovariances().GetMatrixArray());
+
+      //std::cout << "Matrix found with Ncols = " << param->GetCovariances().GetNcols() << " and Nrows = " << param->GetCovariances().GetNrows() << std::endl;
+      sTrackParam.covM = param->GetCovariances();
       out.write((char*)&sTrackParam,sizeof(TrackParamStruct));
 
       Int_t nClusters = track->GetNClusters();
