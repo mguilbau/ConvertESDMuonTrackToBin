@@ -19,13 +19,44 @@
 #include "AliMUONRecoParam.h"
 #include "AliMUONESDInterface.h"
 
-#include "Field/MagneticField.h"
+//#include "Field/MagneticField.h"
 
-#include "MCHBase/ClusterBlock.h"
-#include "MCHBase/TrackBlock.h"
+//#include "MCHBase/ClusterBlock.h"
+//#include "MCHBase/TrackBlock.h"
+
+struct ClusterStruct {
+  float x;      
+  float y;      
+  float z;      
+  float ex;     
+  float ey;     
+  uint32_t uid; 
+  
+  int getChamberId() const { return getChamberId(uid); }
+  int getDEId() const { return getDEId(uid); }
+  int getClusterIndex() const { return getClusterIndex(uid); }
+  
+  static int getChamberId(uint32_t clusterId) { return (clusterId & 0xF0000000) >> 28; }
+  static int getDEId(uint32_t clusterId) { return (clusterId & 0x0FFE0000) >> 17; }
+  static int getClusterIndex(uint32_t clusterId) { return (clusterId & 0x0001FFFF); }
+};
+
+struct TrackParamStruct {
+  double x;  
+  double xs; 
+  double y; 
+  double ys;  
+  double z;   
+  double px;  
+  double py;  
+  double pz;
+  double invpyz;  
+  short sign; 
+};
+
 
 using namespace std;
-using namespace o2::mch;
+//using namespace o2::mch;
 
 void ConvertESDTrack(TString esdFileName, TString outFileName = "AliESDs.in", Bool_t refit = kFALSE, Int_t LastEvent = -1)
 {
@@ -72,7 +103,7 @@ void ConvertESDTrack(TString esdFileName, TString outFileName = "AliESDs.in", Bo
   AliMUONTrack muonTrack;
 
   for (Int_t iEvent = 0; iEvent < nevents; iEvent++) {
-    
+    if(iEvent % 1000 == 0) std::cout << "Event = " << iEvent << std::endl; 
     // get the ESD event
     if (tree->GetEvent(iEvent) <= 0) {
       Error("ConvertESDTrack", "no ESD object found for event %d", iEvent);
@@ -90,11 +121,11 @@ void ConvertESDTrack(TString esdFileName, TString outFileName = "AliESDs.in", Bo
         man->SetDefaultStorage("local://./OCDB");
       }
       man->SetRun(esd->GetRunNumber());
-      auto field =
-      o2::field::MagneticField::createFieldMap(-30000., -5999.95, o2::field::MagneticField::kConvLHC, false, 3500., "A-A",
-                                               "$(O2_ROOT)/share/Common/maps/mfchebKGI_sym.root");
-      TGeoGlobalMagField::Instance()->SetField(field);
-      TGeoGlobalMagField::Instance()->Lock();
+//      auto field =
+//      o2::field::MagneticField::createFieldMap(-30000., -5999.95, o2::field::MagneticField::kConvLHC, false, 3500., "A-A",
+//                                               "$(O2_ROOT)/share/Common/maps/mfchebKGI_sym.root");
+//      TGeoGlobalMagField::Instance()->SetField(field);
+//      TGeoGlobalMagField::Instance()->Lock();
       AliGeomManager::LoadGeometry();
       if (!AliGeomManager::GetGeometry()) return;
       if (!AliGeomManager::ApplyAlignObjsFromCDB("MUON")) return;
@@ -144,12 +175,15 @@ void ConvertESDTrack(TString esdFileName, TString outFileName = "AliESDs.in", Bo
       out.write((char*)&sTrackParam,sizeof(TrackParamStruct));
       */
       // store track parameters at first cluster
-      sTrackParam.x = param->GetNonBendingCoor();
-      sTrackParam.y = param->GetBendingCoor();
-      sTrackParam.z = param->GetZ();
+      sTrackParam.x  = param->GetNonBendingCoor();
+      sTrackParam.xs = param->GetNonBendingSlope();
+      sTrackParam.y  = param->GetBendingCoor();
+      sTrackParam.ys = param->GetBendingSlope();
+      sTrackParam.z  = param->GetZ();
       sTrackParam.px = param->Px();
       sTrackParam.py = param->Py();
       sTrackParam.pz = param->Pz();
+      sTrackParam.invpyz = param->GetInverseBendingMomentum();
       sTrackParam.sign = param->GetCharge();
       out.write((char*)&sTrackParam,sizeof(TrackParamStruct));
 
