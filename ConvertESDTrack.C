@@ -12,6 +12,7 @@
 #include "AliESDEvent.h"
 #include "AliESDMuonTrack.h"
 #include "AliESDMuonCluster.h"
+#include "AliMUONTrackExtrap.h"
 
 #include "AliMUONCDB.h"
 #include "AliMUONTrack.h"
@@ -59,7 +60,7 @@ struct TrackParamStruct {
 using namespace std;
 //using namespace o2::mch;
 
-void ConvertESDTrack(TString esdFileName, TString outFileName = "AliESDs.in", Bool_t refit = kFALSE, Int_t LastEvent = -1)
+void ConvertESDTrack(TString esdFileName = "AliESDs.root", TString outFileName = "AliESDs.in", Bool_t refit = kFALSE, Int_t LastEvent = -1)
 {
   /// convert ESD tracks+clusters into O2 structures
   /// saved in a binary file with the following format:
@@ -164,6 +165,10 @@ void ConvertESDTrack(TString esdFileName, TString outFileName = "AliESDs.in", Bo
       // refit the track if requested
       AliMUONESDInterface::ESDToMUON(*track, muonTrack, refit);
       AliMUONTrackParam *param = static_cast<AliMUONTrackParam*>(muonTrack.GetTrackParamAtCluster()->First());
+
+      // extrap at mft end
+      //ExtrapToZCov(param, zVtx);
+      AliMUONTrackExtrap::ExtrapToVertexWithoutBranson(param,-77.5);
       /*
       // store track parameters at vertex
       sTrackParam.x = track->GetNonBendingCoor();
@@ -192,25 +197,6 @@ void ConvertESDTrack(TString esdFileName, TString outFileName = "AliESDs.in", Bo
       //std::cout << "Matrix found with Ncols = " << param->GetCovariances().GetNcols() << " and Nrows = " << param->GetCovariances().GetNrows() << std::endl;
       sTrackParam.covM = param->GetCovariances();
       out.write((char*)&sTrackParam,sizeof(TrackParamStruct));
-
-      Int_t nClusters = track->GetNClusters();
-      out.write((char*)&nClusters,sizeof(Int_t));
-      
-      for (Int_t iCl = 0; iCl < nClusters; iCl++) {
-        
-        AliESDMuonCluster *cluster = esd->FindMuonCluster(track->GetClusterId(iCl));
-        
-        // store cluster information
-        sCluster.x = cluster->GetX();
-        sCluster.y = cluster->GetY();
-        sCluster.z = cluster->GetZ();
-        sCluster.ex = cluster->GetErrX();
-        sCluster.ey = cluster->GetErrY();
-        sCluster.uid = cluster->GetUniqueID();
-        out.write((char*)&sCluster,sizeof(ClusterStruct));
-        
-      }
-      
     }
     
   }
